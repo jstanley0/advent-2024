@@ -49,7 +49,7 @@ cells = maze.cells_visited
 puts cells.size
 
 n = 0
-cells.each do |x, y|
+(cells - [maze.start_x, maze.start_y]).each do |x, y|
   maze.overwrite(x, y, '#')
   n += 1 if maze.run
   maze.overwrite(x, y, '.')
