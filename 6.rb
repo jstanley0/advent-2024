@@ -21,8 +21,8 @@ class Maze
     y = start_y
 
     self.visited = Set.new
-    until visited.include?([x, y, dir])
-      visited << [x, y, dir]
+    until visited.include?(dir << 24 | y << 12 | x)
+      visited << (dir << 24 | y << 12 | x)
       nx = x + DIRS[dir][0]
       ny = y + DIRS[dir][1]
       return false unless (0...w).include?(nx) && (0...h).include?(ny)
@@ -39,7 +39,7 @@ class Maze
   end
 
   def cells_visited
-    visited.map { |x, y, _| [x, y] }.uniq
+    visited.map { [_1 & 0xFFF, (_1 >> 12) & 0xFFF] }.uniq
   end
 end
 
