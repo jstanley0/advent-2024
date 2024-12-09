@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <execution>
 
 static const int DX[] = {0, 1, 0, -1};
 static const int DY[] = {-1, 0, 1, 0};
@@ -90,12 +91,14 @@ int main(int argc, char **argv) {
   auto path = maze.run();
   std::cout << path.size() + 1 << std::endl;
 
-  int n = 0;
-  for(auto coord : path) {
-    if (maze.run(coord.first, coord.second))
+  std::vector<std::pair<int, int>> path_vec(path.begin(), path.end());
+  std::atomic<int> n = 0;
+  std::for_each(std::execution::par, path_vec.begin(), path_vec.end(), [&](const auto& coord) {
+    if (maze.run(coord.first, coord.second)) {
       ++n;
-  }
-  std::cout << n << std::endl;
+    }
+  });
+  std::cout << n.load() << std::endl;
   
   return 0;
 }
