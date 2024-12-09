@@ -1,6 +1,6 @@
 require 'byebug'
 
-disk_map = ARGF.read.chars.map(&:to_i).each_slice(2).to_a
+disk_map = ARGF.read.strip.chars.map(&:to_i).each_slice(2).to_a
 
 Extent = Struct.new(:pos, :size, :file_id, :prev, :next)
 
@@ -112,22 +112,23 @@ disk_map.each do |data, slack|
     pos += slack
   end
 end
-
 file_id -= 1
+
+min = {}
 while file_id > 0
   file = disk.file_index[file_id]
   raise "can't find file #{file_id}" unless file
 
   # find an empty extent big enough to contain the file
-  space = disk.front
-  until space.nil? || space.file_id.nil? && space.size >= file.size
+  space = min[file.size] || disk.front
+  until space.nil? || space.pos >= file.pos || space.file_id.nil? && space.size >= file.size
     space = space.next
   end
 
-  if space && space.pos < file.pos
+  if space && space.file_id.nil?
     size = file.size
     disk.free(file)
-    disk.allocate(space, size, file_id)
+    min[size] = disk.allocate(space, size, file_id)
   end
   # disk.print
 
