@@ -85,13 +85,7 @@ class ExtentList
     sum = 0
     extent = front
     while extent
-      if extent.file_id
-        p = extent.pos
-        extent.size.times do
-          sum += p * extent.file_id
-          p += 1
-        end
-      end
+      sum += extent.file_id * extent.size * (2 * extent.pos + extent.size - 1) / 2 if extent.file_id
       extent = extent.next
     end
     sum
