@@ -5,7 +5,7 @@ regions = []
 
 map = Skim.read
 rmap = Skim.new(map.width, map.height)
-map.each do |c, x, y|
+map.each_with_coords do |c, x, y|
   if y > 0 && map[x, y - 1] == c
     ri = rmap[x, y - 1]
     regions[ri].area += 1
@@ -41,7 +41,7 @@ def in_region?(rmap, ri, x, y)
   rmap.in_bounds?(x, y) && rmap[x, y] == ri
 end
 
-rmap.each do |ri, x, y|
+rmap.each_with_coords do |ri, x, y|
   if in_region?(rmap, ri, x + 1, y)
     regions[ri].perimeter -= 1 unless in_region?(rmap, ri, x, y - 1) || in_region?(rmap, ri, x + 1, y - 1)
     regions[ri].perimeter -= 1 unless in_region?(rmap, ri, x, y + 1) || in_region?(rmap, ri, x + 1, y + 1)

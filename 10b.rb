@@ -5,18 +5,8 @@ def path_count(map, x, y)
   return 1 if c == '9'
 
   nc = (c.ord + 1).chr
-  count = 0
-  map.nabes(x, y, diag: false) do |v, i, j|
-    count += path_count(map, i, j) if v == nc
-  end
-  count
+  map.nabes(x, y, diag: false).filter_map { |v, i, j| path_count(map, i, j) if v == nc }.sum
 end
 
-sum = 0
 map = Skim.read
-map.all_coords('0') do |x, y|
-  paths = path_count(map, x, y)
-  puts "trailhead at #{x},#{y} has rating #{paths}"
-  sum += paths
-end
-puts sum
+puts map.all_coords('0').sum { |x, y| path_count(map, x, y) }

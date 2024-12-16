@@ -11,7 +11,7 @@ old_map = Skim.read
 moves = ARGF.read.scan(/\S/)
 
 map = Skim.new(old_map.width * 2, old_map.height)
-old_map.each do |c, x, y|
+old_map.each_with_coords do |c, x, y|
   nx = x * 2
   case c
   when '#', '.'
@@ -95,7 +95,7 @@ moves.each do |move|
 end
 
 sum = 0
-map.each do |c, x, y|
+map.each_with_coords do |c, x, y|
   sum += 100 * y + x if c == '['
 end
 puts sum

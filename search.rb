@@ -8,6 +8,12 @@ class Search
     def enum_edges
     end
 
+    # helper for iteration
+    def edges(&)
+      return to_enum(:edges) unless block_given?
+      enum_edges(&)
+    end
+
     # for bfs, indicate whether a goal state has been reached
     def goal?
     end
@@ -76,7 +82,7 @@ class Search
       break if find_all_paths && best_path_cost && cost_so_far > best_path_cost
 
       unless goal
-        node.enum_edges do |cost, neighbor|
+        node.edges do |cost, neighbor|
           cost_to_neighbor = cost_so_far + cost
           if best_cost_to[neighbor].nil? || (find_all_paths ? (cost_to_neighbor <= best_cost_to[neighbor]) : (cost_to_neighbor < best_cost_to[neighbor]))
             best_cost_to[neighbor] = cost_to_neighbor
@@ -124,11 +130,7 @@ class Search
 
   def self.compute_path_cost(path)
     path.each_cons(2).sum do |from, to|
-      n = 0
-      from.enum_edges do |cost, neighbor|
-        n += cost if neighbor.fuzzy_equal?(to)
-      end
-      n
+      from.edges.find { |_cost, neighbor| neighbor.fuzzy_equal?(to) }.first
     end
   end
 

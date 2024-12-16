@@ -38,8 +38,4 @@ moves.each do |move|
   #map.print(highlights: %w[@])
 end
 
-sum = 0
-map.each do |c, x, y|
-  sum += 100 * y + x if c == 'O'
-end
-puts sum
+puts map.each_with_coords.filter_map { |c, x, y| 100 * y + x if c == 'O' }.sum

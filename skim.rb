@@ -9,6 +9,8 @@ require 'colorize'
 require_relative 'search'
 
 class Skim
+  include Enumerable
+
   # cardinal directions, starting right, rotating clockwise modulo 4
   DX = [1, 0, -1, 0]
   DY = [0, 1, 0, -1]
@@ -173,7 +175,7 @@ class Skim
   HIGHLIGHT_COLORS = %i[light_cyan light_magenta light_white light_green light_red light_yellow light_blue]
   def post_process(val, i, hchunk, highlights)
     unless highlights.empty?
-      color_index = highlights.find_index(val)
+      color_index = highlights.index(val)
       val = val.colorize(color_index ? HIGHLIGHT_COLORS[color_index % HIGHLIGHT_COLORS.size] : :grey)
     end
     val += " " if hchunk && ((i + 1) % hchunk) == 0
@@ -219,29 +221,33 @@ class Skim
     dup_with_data(rows)
   end
 
-  # yield each value with its coordinates
-  def each
+  def each(&)
+    return to_enum { size } unless block_given?
+
+    data.each do |row|
+      row.each(&)
+    end
+    self
+  end
+
+  def each_with_coords
+    return to_enum(:each_with_coords) { size } unless block_given?
+
     data.each_with_index do |row, y|
       row.each_with_index do |val, x|
         yield val, x, y
       end
     end
+    self
+  end
+
+  def size
+    # since it may not be #rectangular?
+    data.sum { |row| row.size }
   end
 
   def ==(rhs)
     data == rhs.data
-  end
-
-  def any?(&)
-    data.any? { |row| row.any?(&) }
-  end
-
-  def all?(&)
-    data.all? { |row| row.all?(&) }
-  end
-
-  def count(...)
-    data.sum { |row| row.count(...) }
   end
 
   def count_window(x, y, w, h, c)
@@ -261,6 +267,8 @@ class Skim
   end
 
   def all_coords(value)
+    return to_enum(:all_coords, value) unless block_given?
+
     data.each_with_index do |row, y|
       row.each_with_index do |v, x|
         yield x, y if value == v
@@ -298,6 +306,8 @@ class Skim
   # yield neighbors (val, x, y) of the given element
   # if `diag` is false, only yield orthogonal ones (not diagonals)
   def nabes(x, y, diag: true, &)
+    return to_enum(:nabes, x, y, diag:) unless block_given?
+
     check_nabe(x - 1, y, &)
     check_nabe(x + 1, y, &)
     check_nabe(x, y - 1, &)
