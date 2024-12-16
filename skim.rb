@@ -9,6 +9,10 @@ require 'colorize'
 require_relative 'search'
 
 class Skim
+  # cardinal directions, starting right, rotating clockwise modulo 4
+  DX = [1, 0, -1, 0]
+  DY = [0, 1, 0, -1]
+
   # yeah, this isn't very Encapsulated, but I need an escape hatch when time is of the essence
   attr_accessor :data, :sep
 

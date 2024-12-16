@@ -36,10 +36,11 @@ class Search
 
   # finds a least-cost path from start_node to a goal node
   # and returns [cost, [search_node, search_node...]]
-  def self.bfs(start_node)
+  def self.bfs(start_node, find_all_paths: false)
     search_impl(start_node,
                 ->(node) { node.goal? },
-                ->(_node, cost_so_far) { cost_so_far })
+                ->(_node, cost_so_far) { cost_so_far },
+                find_all_paths:)
   end
 
   # finds a least-cost path from start_node to end_node
@@ -52,7 +53,7 @@ class Search
 
   private
 
-  def self.search_impl(start_node, goal_proc, cost_heuristic_proc)
+  def self.search_impl(start_node, goal_proc, cost_heuristic_proc, find_all_paths: false)
     path_links = {}
     best_cost_to = { start_node => 0 }
     fringe = PQueue.new { |a, b| a.cost_heuristic < b.cost_heuristic }
@@ -63,17 +64,41 @@ class Search
       node = fringe.pop
       cost_so_far = best_cost_to[node]
       # puts "searching from #{node} at cost #{cost_so_far}"
-      return cost_so_far, build_path(path_links, node) if goal_proc.call(node)
-
-      node.enum_edges do |cost, neighbor|
-        cost_to_neighbor = cost_so_far + cost
-        if best_cost_to[neighbor].nil? || cost_to_neighbor < best_cost_to[neighbor]
-          best_cost_to[neighbor] = cost_to_neighbor
-          path_links[neighbor] = node
-          neighbor.cost_heuristic = cost_heuristic_proc.call(neighbor, cost_to_neighbor)
-          fringe.push neighbor
+      goal = goal_proc.call(node)
+      if goal
+        if find_all_paths
+          goal_node = node
+          best_path_cost = cost_so_far
+        else
+          return cost_so_far, build_path(path_links, node)
         end
       end
+      break if find_all_paths && best_path_cost && cost_so_far > best_path_cost
+
+      unless goal
+        node.enum_edges do |cost, neighbor|
+          cost_to_neighbor = cost_so_far + cost
+          if best_cost_to[neighbor].nil? || (find_all_paths ? (cost_to_neighbor <= best_cost_to[neighbor]) : (cost_to_neighbor < best_cost_to[neighbor]))
+            best_cost_to[neighbor] = cost_to_neighbor
+            if find_all_paths
+              path_links[neighbor] ||= Set.new
+              path_links[neighbor] << node
+            else
+              path_links[neighbor] = node
+            end
+            neighbor.cost_heuristic = cost_heuristic_proc.call(neighbor, cost_to_neighbor)
+            fringe.push neighbor
+          end
+        end
+      end
+    end
+
+    if find_all_paths && goal_node
+      ret = [best_path_cost]
+      # although we stopped searching when paths became non-viable, if those paths converge into an optimal one
+      # we will still find them this way. so filter them out. FIXME be smarter about this
+      ret.concat build_all_paths(path_links, [goal_node]).select { |path| compute_path_cost(path) == best_path_cost }
+      return ret
     end
 
     nil
@@ -86,5 +111,25 @@ class Search
     end
     path
   end
-end
 
+  def self.build_all_paths(path_links, end_path)
+    return [end_path] if path_links[end_path.first].nil?
+
+    paths = []
+    path_links[end_path.first].each do |link|
+      paths.concat build_all_paths(path_links, [link] + end_path)
+    end
+    paths
+  end
+
+  def self.compute_path_cost(path)
+    path.each_cons(2).sum do |from, to|
+      n = 0
+      from.enum_edges do |cost, neighbor|
+        n += cost if neighbor.fuzzy_equal?(to)
+      end
+      n
+    end
+  end
+
+end
