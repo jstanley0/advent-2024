@@ -1,4 +1,4 @@
-require 'pqueue'
+require 'rb_heap'
 
 class Search
   # to use Search, derive from Search::Node and implement `enum_edges`
@@ -62,9 +62,9 @@ class Search
   def self.search_impl(start_node, goal_proc, cost_heuristic_proc, find_all_paths: false)
     path_links = {}
     best_cost_to = { start_node => 0 }
-    fringe = PQueue.new { |a, b| a.cost_heuristic < b.cost_heuristic }
+    fringe = Heap.new { |a, b| a.cost_heuristic < b.cost_heuristic }
     start_node.cost_heuristic = cost_heuristic_proc.call(start_node, 0)
-    fringe.push start_node
+    fringe << start_node
 
     until fringe.empty?
       node = fringe.pop
@@ -93,7 +93,7 @@ class Search
               path_links[neighbor] = node
             end
             neighbor.cost_heuristic = cost_heuristic_proc.call(neighbor, cost_to_neighbor)
-            fringe.push neighbor
+            fringe << neighbor
           end
         end
       end
