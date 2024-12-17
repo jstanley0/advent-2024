@@ -100,14 +100,8 @@ class Search
     end
 
     if find_all_paths && goal_node
-      ret = [best_path_cost]
-      # although we stopped searching when paths became non-viable, if those paths converge into an optimal one
-      # we will still find them this way. so filter them out. FIXME be smarter about this
-      ret.concat build_all_paths(path_links, [goal_node]).select { |path| compute_path_cost(path) == best_path_cost }
-      return ret
+      [best_path_cost] + build_all_paths(path_links, [goal_node], best_path_cost)
     end
-
-    nil
   end
 
   def self.build_path(path_links, target_point)
@@ -118,20 +112,15 @@ class Search
     path
   end
 
-  def self.build_all_paths(path_links, end_path)
+  def self.build_all_paths(path_links, end_path, best_cost, cost_so_far = 0)
+    return [] if cost_so_far > best_cost
     return [end_path] if path_links[end_path.first].nil?
 
     paths = []
     path_links[end_path.first].each do |link|
-      paths.concat build_all_paths(path_links, [link] + end_path)
+      link_cost = cost_so_far + link.edges.find { |_cost, node| node.fuzzy_equal?(end_path.first) }.first
+      paths.concat build_all_paths(path_links, [link] + end_path, best_cost, link_cost) if link_cost <= best_cost
     end
     paths
   end
-
-  def self.compute_path_cost(path)
-    path.each_cons(2).sum do |from, to|
-      from.edges.find { |_cost, neighbor| neighbor.fuzzy_equal?(to) }.first
-    end
-  end
-
 end
