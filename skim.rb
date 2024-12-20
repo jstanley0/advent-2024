@@ -369,15 +369,16 @@ class Skim
     digest.hexdigest
   end
 
-  SearchContext = Struct.new(:skim, :diag, :path_proc, :goal_or_proc, :est_dist_proc)
+  SearchContext = Struct.new(:skim, :diag, :path_proc, :goal_or_proc, :est_dist_proc, :max_cost)
 
   class SearchNode < Search::Node
-    attr_accessor :context, :x, :y
+    attr_accessor :context, :x, :y, :d
 
-    def initialize(context, x, y)
+    def initialize(context, x, y, cost = 0)
       self.context = context
       self.x = x
       self.y = y
+      self.cost = cost
     end
 
     def enum_edges
@@ -385,7 +386,9 @@ class Skim
       context.skim.nabes(x, y, diag: context.diag) do |v, a, b|
         cost = context.path_proc.call(c, v, x, y, a, b)
         cost = 1 if cost == true
-        yield cost, SearchNode.new(context, a, b) if cost
+        if cost && (context.max_cost.nil? || self.cost + cost < context.max_cost)
+          yield cost, SearchNode.new(context, a, b, self.cost + cost)
+        end
       end
     end
 
@@ -414,8 +417,9 @@ class Skim
   # diag: can move diagonally
   # accepts block (source_char, dest_char, x0, y0, x1, y1) -> move cost (or nil if invalid)
   # goal = character to match or (char, x, y) -> bool
+  # max_cost = optional path cost limit
   # returns [cost, path]
-  def bfs(x, y, diag: false, goal:, &block)
+  def bfs(x, y, diag: false, goal:, max_cost: nil, &block)
     context = SearchContext.new(self, diag, block, goal)
     Search::bfs(SearchNode.new(context, x, y))
   end
