@@ -1,19 +1,44 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <string>
+#include <sstream>
 #include <algorithm>
-#include <map>
-#include <set>
+#include <unordered_map>
+#include <unordered_set>
 #include <ranges>
 #include <execution>
 #include <atomic>
 
-typedef std::array<int, 4> DiffArray;
-typedef std::set<DiffArray> BidSet;
+struct PackedDiff
+{
+  int v;
+
+  PackedDiff(int d0, int d1, int d2, int d3) : v((d0 + 9) << 24 | (d1 + 9) << 16 | (d2 + 9) << 8 | (d3 + 9)) {}
+  bool operator==(PackedDiff rhs) const { return v == rhs.v; }
+
+  friend std::ostream& operator<<(std::ostream& os, const PackedDiff& obj) {
+    return os << (obj.v >> 24) - 9 << ","
+     << ((obj.v >> 16) & 0xFF) - 9 << ","
+     << ((obj.v >> 8) & 0xFF) - 9 << ","
+     << (obj.v & 0xFF) - 9;
+  }
+};
+
+namespace std {
+    template <>
+    struct hash<PackedDiff> {
+        size_t operator()(const PackedDiff& key) const {
+            return std::hash<int>()(key.v);
+        }
+    };
+}
+
+typedef std::unordered_set<PackedDiff> BidSet;
 
 class Monkey {
   int secret;
-  std::map<DiffArray, int> bids;
+  std::unordered_map<PackedDiff, int> bids;
 
   int next(int num) {
     num = ((num << 6) ^ num) & 0xFFFFFF;
@@ -33,17 +58,17 @@ public:
       prices[i] = n % 10;
     }
     for(int i = 4; i < 2000; ++i) {
-      DiffArray diff = { prices[i - 3] - prices[i - 4],
-                         prices[i - 2] - prices[i - 3],
-                         prices[i - 1] - prices[i - 2],
-                         prices[i] - prices[i - 1] };
+      PackedDiff diff{ prices[i - 3] - prices[i - 4],
+                       prices[i - 2] - prices[i - 3],
+                       prices[i - 1] - prices[i - 2],
+                       prices[i] - prices[i - 1] };
       bids.try_emplace(diff, prices[i]);                  
       all_bids.insert(diff);              
     }
     return n;
   }
 
-  int bid(const DiffArray& diff) const {
+  int bid(PackedDiff diff) const {
     auto it = bids.find(diff);
     if (it != bids.end())
       return it->second;
@@ -88,20 +113,20 @@ int main(int argc, char **argv) {
   std::cerr << bids.size() << " distinct possible bids" << std::endl;
   
   // parallel execution requires a random-access iterator to divvy up the work
-  std::vector<DiffArray> bid_vec;
+  std::vector<PackedDiff> bid_vec;
   bid_vec.reserve(bids.size());
   bid_vec.insert(bid_vec.end(), bids.begin(), bids.end());
 
   std::mutex output_mtx;
   std::atomic<int> best = 0;
-  std::for_each(std::execution::par, bid_vec.begin(), bid_vec.end(), [&](const DiffArray& bid) {
+  std::for_each(std::execution::par, bid_vec.begin(), bid_vec.end(), [&](PackedDiff bid) {
     int bananas = 0;
     for(const auto &monkey : monkeys) {
       bananas += monkey.bid(bid);
     }
     if (update_max(best, bananas)) {
       std::lock_guard<std::mutex> lock(output_mtx);      
-      std::cerr << bid[0] << "," << bid[1] << "," << bid[2] << "," << bid[3] << " -> " << best << std::endl;
+      std::cerr << bid << " -> " << best << std::endl;
     }
   });
   
