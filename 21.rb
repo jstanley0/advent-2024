@@ -1,10 +1,10 @@
 require_relative "skim"
 
 DIRS = {
-  ?^ => [ 0,-1],
-  ?< => [-1, 0],
-  ?> => [ 1, 0],
-  ?v => [ 0, 1]
+  '^' => [ 0,-1],
+  '<' => [-1, 0],
+  '>' => [ 1, 0],
+  'v' => [ 0, 1]
 }
 
 def apply_path(x, y, path)
@@ -42,37 +42,60 @@ def find_path(keypad, x0, y0, to)
   end
 end
 
-def find_code_path(keypad, code)
+def find_code_path(numpad, code)
   path = ""
-  x, y = keypad.find_coords('A')
+  x, y = numpad.find_coords('A')
 
   code.each_char do |c|
-    path_seg = find_path(keypad, x, y, c)
+    path_seg = find_path(numpad, x, y, c)
     path += path_seg + "A"
     x, y = apply_path(x, y, path_seg)
   end
   path
 end
 
+def count_dpad_segments(dpad, path_segs)
+  next_segs = Hash.new(0)
+  path_segs.each do |seg, count|
+    x0, y0 = dpad.find_coords('A')
+    syms = seg.chars
+    until syms.empty?
+      x, y = x0, y0
+      part = ""
+      loop do
+        raise ":(" if syms.empty?
+        ps = find_path(dpad, x, y, syms.shift)
+        part += ps + "A"
+        x, y = apply_path(x, y, ps)
+        break if x == x0 && y == y0
+      end
+      next_segs[part] += count
+    end
+  end
+
+  next_segs
+end
+
 numpad = Skim.from_concise_string("789/456/123/#0A")
 dpad = Skim.from_concise_string("#^A/<v>")
 
-sc = 0
 codes = ARGF.readlines.map(&:strip)
-codes.each do |code|
+sc = codes.sum do |code|
   puts code
 
   path = find_code_path(numpad, code)
   puts path
-
-  2.times do |n|
-    path = find_code_path(dpad, path)
-    puts "#{n}: #{path.size}"
+  path_segs = { path => 1 }
+  path_size = nil
+  25.times do |n|
+    path_segs = count_dpad_segments(dpad, path_segs)
+    path_size = path_segs.sum{|k, v| k.size * v}
+    puts "#{n + 1}: #{path_size}"
   end
 
-  complexity = path.size * code.to_i
-  puts "#{path.size} * #{code.to_i} = #{complexity}\n\n"
-  sc += complexity
+  complexity = path_size * code.to_i
+  puts "#{path_size} * #{code.to_i} = #{complexity}\n\n"
+  complexity
 end
 
 puts sc
