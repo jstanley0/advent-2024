@@ -3,4 +3,8 @@ ruby --yjit: 4h09m31s
 C++, single core: 5m40s
 C++, 10 cores: 42s
 CUDA, RTX 3070 Ti: 0.5s
-smarter algorithm, single core: 0.2s
+
+smarter algorithm, single core:
+ruby: 5.7s
+ruby --yjit: 5.3s
+C++ with bit tricks: 0.2s
