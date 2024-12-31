@@ -2,42 +2,46 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <bitset>
 #include <algorithm>
-#include <unordered_map>
-#include <unordered_set>
 
 struct PackedDiff
 {
   int v;
 
-  PackedDiff(int d0, int d1, int d2, int d3) : v((d0 + 9) << 24 | (d1 + 9) << 16 | (d2 + 9) << 8 | (d3 + 9)) {}
-  bool operator==(PackedDiff rhs) const { return v == rhs.v; }
+  explicit PackedDiff(int index) : v(index) {}
+  PackedDiff(int d0, int d1, int d2, int d3) : v((d0 + 9) * 6859 + (d1 + 9) * 361 + (d2 + 9) * 19 + (d3 + 9)) {}
+  inline int index() const { return v; }
 
   friend std::ostream& operator<<(std::ostream& os, const PackedDiff& obj) {
-    return os << (obj.v >> 24) - 9 << ","
-     << ((obj.v >> 16) & 0xFF) - 9 << ","
-     << ((obj.v >> 8) & 0xFF) - 9 << ","
-     << (obj.v & 0xFF) - 9;
+    return os << (obj.v / 6859) - 9 << ","
+     << ((obj.v / 361) % 19) - 9 << ","
+     << ((obj.v / 19) % 19) - 9 << ","
+     << (obj.v % 19) - 9;
   }
 };
 
-namespace std {
-    template <>
-    struct hash<PackedDiff> {
-        size_t operator()(const PackedDiff& key) const {
-            return std::hash<int>()(key.v);
-        }
-    };
-}
+struct BidMap
+{
+  std::array<int, 130321> bids;
 
-typedef std::unordered_map<PackedDiff, int> BidMap;
+  BidMap() { std::fill(bids.begin(), bids.end(), 0); }
+  
+  int operator[](const PackedDiff& pd) const { return bids[pd.index()]; }
+  PackedDiff best_index() const {
+    auto it = std::max_element(bids.begin(), bids.end());
+    return PackedDiff(it - bids.begin());
+  }
+
+  int add(const PackedDiff& pd, int val) { return bids[pd.index()] += val; }
+};
 
 class Monkey {
   int secret;
 
   int next(int num) {
     num = ((num << 6) ^ num) & 0xFFFFFF;
-    num = ((num >> 5) ^ num) & 0xFFFFFF;
+    num = ((num >> 5) ^ num);
     num = ((num << 11) ^ num) & 0xFFFFFF;
     return num;
   }
@@ -52,14 +56,15 @@ public:
       n = next(n);
       prices[i] = n % 10;
     }
-    std::unordered_set<PackedDiff> my_bids;
+    std::bitset<130321> my_bids;
     for(int i = 4; i < 2000; ++i) {
       PackedDiff diff{ prices[i - 3] - prices[i - 4],
                        prices[i - 2] - prices[i - 3],
                        prices[i - 1] - prices[i - 2],
                        prices[i] - prices[i - 1] };
-      if (my_bids.insert(diff).second) {
-        all_bids[diff] += prices[i];      
+      if (my_bids[diff.index()] == 0) {
+        my_bids.set(diff.index());
+        all_bids.add(diff, prices[i]);
       }
     }
     return n;
@@ -87,10 +92,8 @@ int main(int argc, char **argv) {
   }
   std::cout << total << std::endl;
 
-  auto best = std::max_element(bids.begin(), bids.end(), [](const auto &lhs, const auto &rhs) {
-    return lhs.second < rhs.second;
-  });
-  std::cout << best->first << " " << best->second << std::endl;
+  PackedDiff best = bids.best_index();
+  std::cout << best << " " << bids[best] << std::endl;
 
   return 0;
 }

@@ -2,9 +2,11 @@ ruby: 10h16m20s
 ruby --yjit: 4h09m31s
 C++, single core: 5m40s
 C++, 10 cores: 42s
+OpenCL, M1 Max: 2.4s
 CUDA, RTX 3070 Ti: 0.5s
 
 smarter algorithm, single core:
 ruby: 5.7s
 ruby --yjit: 5.3s
 C++ with bit tricks: 0.2s
+C++ with base-19 array and bit vector: 0.03s
